@@ -4,6 +4,24 @@ import { Product } from "../models/product.model.js";
 import { appendEventToProduct, verifyProductEventChain } from "../services/event-chain.service.js";
 import { badRequest, forbidden, notFound } from "../utils/errors.js";
 
+const encodeCursor = (product) =>
+  Buffer.from(`${new Date(product.lastEventAt).toISOString()}::${String(product._id)}`).toString(
+    "base64url"
+  );
+
+const decodeCursor = (cursor) => {
+  try {
+    const [lastEventAtString, id] = Buffer.from(cursor, "base64url").toString("utf8").split("::");
+    const lastEventAt = new Date(lastEventAtString);
+    if (Number.isNaN(lastEventAt.getTime()) || !mongoose.Types.ObjectId.isValid(id)) {
+      return null;
+    }
+    return { lastEventAt, id: new mongoose.Types.ObjectId(id) };
+  } catch (_err) {
+    return null;
+  }
+};
+
 const ensureProductAccess = (product, user) => {
   if (!product) throw notFound("Product not found.");
   if (user.role === "partner" && product.ownerPartnerId !== user.partnerId) {
@@ -96,11 +114,11 @@ export const listProducts = async (req, res, next) => {
       startDate,
       endDate,
       partnerId,
-      page = 1,
-      limit = 20
+      page,
+      limit = 20,
+      cursor
     } = req.query;
 
-    const parsedPage = Math.max(Number(page) || 1, 1);
     const parsedLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
     const query = {};
 
@@ -118,6 +136,40 @@ export const listProducts = async (req, res, next) => {
       query.ownerPartnerId = partnerId;
     }
 
+    // Cursor/keyset pagination is preferred for deep traversal at scale.
+    if (cursor && !page) {
+      const decoded = decodeCursor(cursor);
+      if (!decoded) {
+        throw badRequest("Invalid cursor.");
+      }
+
+      query.$or = [
+        { lastEventAt: { $lt: decoded.lastEventAt } },
+        { lastEventAt: decoded.lastEventAt, _id: { $lt: decoded.id } }
+      ];
+
+      const items = await Product.find(query)
+        .sort({ lastEventAt: -1, _id: -1 })
+        .limit(parsedLimit + 1)
+        .lean();
+
+      const hasNext = items.length > parsedLimit;
+      const data = hasNext ? items.slice(0, parsedLimit) : items;
+      const nextCursor = hasNext ? encodeCursor(data[data.length - 1]) : null;
+
+      return res.json({
+        data,
+        pagination: {
+          mode: "cursor",
+          limit: parsedLimit,
+          nextCursor,
+          hasNext
+        }
+      });
+    }
+
+    // Offset pagination retained for compatibility/simple UIs.
+    const parsedPage = Math.max(Number(page) || 1, 1);
     const [items, total] = await Promise.all([
       Product.find(query)
         .sort({ lastEventAt: -1, _id: -1 })
@@ -130,6 +182,7 @@ export const listProducts = async (req, res, next) => {
     return res.json({
       data: items,
       pagination: {
+        mode: "offset",
         page: parsedPage,
         limit: parsedLimit,
         total,

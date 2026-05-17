@@ -14,7 +14,9 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-productSchema.index({ ownerPartnerId: 1, currentStatus: 1, lastEventAt: -1 });
+productSchema.index({ ownerPartnerId: 1, currentStatus: 1, lastEventAt: -1, _id: -1 });
+productSchema.index({ currentStatus: 1, lastEventAt: -1, _id: -1 });
+productSchema.index({ lastEventAt: -1, _id: -1 });
 productSchema.index({ createdAt: -1 });
 
 export const Product = mongoose.model("Product", productSchema);

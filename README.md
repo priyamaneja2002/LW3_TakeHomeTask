@@ -111,19 +111,20 @@ Each event stores:
 For `GET /products` at 100k+ scale:
 
 - Indexes:
-  - `ownerPartnerId`
-  - `currentStatus`
-  - `lastEventAt`
-  - compound: `{ ownerPartnerId, currentStatus, lastEventAt }`
+  - compound: `{ ownerPartnerId, currentStatus, lastEventAt, _id }`
+  - compound: `{ currentStatus, lastEventAt, _id }`
+  - compound: `{ lastEventAt, _id }`
 - Lean queries (`.lean()`) for list/read endpoints
 - Bounded pagination (`limit <= 100`)
+- Cursor pagination support for deep traversal (`cursor` + `limit`) with stable sort on `lastEventAt DESC, _id DESC`
 
 Implemented filters:
 
 - `status`
 - `startDate`, `endDate` (applied to `lastEventAt`)
 - `partnerId` (internal users only)
-- `page`, `limit`
+- `page`, `limit` (offset mode)
+- `cursor`, `limit` (keyset mode, recommended at scale)
 
 ## Rate Limiting
 

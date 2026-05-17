@@ -16,8 +16,13 @@ export default function App() {
   const [productData, setProductData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [verifyResult, setVerifyResult] = useState(null);
   const [eventType, setEventType] = useState(EVENT_TYPES[1]);
   const [notes, setNotes] = useState("");
+  const [newProductName, setNewProductName] = useState("");
+  const [newProductPartnerId, setNewProductPartnerId] = useState("partner-a");
+  const [newProductSerial, setNewProductSerial] = useState("");
+  const [newProductStatus, setNewProductStatus] = useState("manufactured");
 
   const selectedProduct = useMemo(
     () => products.find((p) => p._id === selectedId) || null,
@@ -41,6 +46,7 @@ export default function App() {
     if (!id) return;
     setLoading(true);
     setError("");
+    setVerifyResult(null);
     try {
       const res = await api.getProduct(id);
       setProductData(res);
@@ -78,6 +84,40 @@ export default function App() {
     }
   };
 
+  const onCreateProduct = async (e) => {
+    e.preventDefault();
+    setError("");
+    setVerifyResult(null);
+
+    try {
+      const payload = {
+        name: newProductName.trim(),
+        ownerPartnerId: newProductPartnerId.trim(),
+        serialNumber: newProductSerial.trim(),
+        status: newProductStatus
+      };
+
+      await api.createProduct(payload);
+      setNewProductName("");
+      setNewProductSerial("");
+      await loadProducts();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const onVerifyChain = async () => {
+    if (!selectedId) return;
+    setError("");
+    try {
+      const res = await api.verifyProduct(selectedId);
+      setVerifyResult(res);
+    } catch (err) {
+      setError(err.message);
+      setVerifyResult(null);
+    }
+  };
+
   return (
     <div className="layout">
       <section className="panel">
@@ -109,6 +149,22 @@ export default function App() {
               <strong>{selectedProduct?.name || productData.product.name}</strong> (
               {productData.product.serialNumber})
             </p>
+            <button onClick={onVerifyChain} disabled={!selectedId}>
+              Verify Event Chain
+            </button>
+            {verifyResult && (
+              <div className={verifyResult.isValid ? "statusBox successBox" : "statusBox errorBox"}>
+                <p>
+                  Chain Status: <strong>{verifyResult.isValid ? "Valid" : "Broken"}</strong>
+                </p>
+                <small>Checked events: {verifyResult.checkedEvents}</small>
+                {!verifyResult.isValid && (
+                  <small>
+                    Broken at: {verifyResult.brokenAtEventId} ({verifyResult.reason})
+                  </small>
+                )}
+              </div>
+            )}
             <div className="timeline">
               {productData.events.map((event) => (
                 <div key={event._id} className="timelineItem">
@@ -125,6 +181,48 @@ export default function App() {
       </section>
 
       <section className="panel">
+        <h2>Create Product</h2>
+        <form onSubmit={onCreateProduct}>
+          <label>
+            Product Name
+            <input
+              value={newProductName}
+              onChange={(e) => setNewProductName(e.target.value)}
+              placeholder="Smartphone X1"
+              required
+            />
+          </label>
+          <label>
+            Owner Partner ID
+            <input
+              value={newProductPartnerId}
+              onChange={(e) => setNewProductPartnerId(e.target.value)}
+              placeholder="partner-a"
+              required
+            />
+          </label>
+          <label>
+            Serial Number
+            <input
+              value={newProductSerial}
+              onChange={(e) => setNewProductSerial(e.target.value)}
+              placeholder="LW3-001"
+              required
+            />
+          </label>
+          <label>
+            Initial Status
+            <select value={newProductStatus} onChange={(e) => setNewProductStatus(e.target.value)}>
+              {EVENT_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit">Create Product</button>
+        </form>
+
         <h2>Add Event</h2>
         <form onSubmit={onSubmit}>
           <label>
