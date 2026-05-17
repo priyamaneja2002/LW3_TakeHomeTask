@@ -1,0 +1,82 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f4f5;
+  color: #18181b;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 12px;
+  padding: 16px;
+}
+
+.panel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #e4e4e7;
+  min-height: 70vh;
+}
+
+.list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.list button {
+  text-align: left;
+  border: 1px solid #d4d4d8;
+  background: #fafafa;
+  border-radius: 6px;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.list button.active {
+  border-color: #2563eb;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.timelineItem {
+  border: 1px solid #e4e4e7;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fafafa;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+select,
+textarea,
+button {
+  font: inherit;
+  padding: 8px;
+}
+
+.error {
+  color: #b91c1c;
+}
